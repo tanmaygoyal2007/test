@@ -5,9 +5,9 @@ on:
     types: [closed]
 
 jobs:
-  check-prs:
-    if: github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main'
-    runs-on: ubuntu-22.04
+  comment-on-merge:
+    if: github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'develop'
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repository
@@ -29,26 +29,19 @@ jobs:
           echo "::set-output name=author::$AUTHOR"
 
       - name: Comment on the PR
-        uses: actions/github-script@v6
-        with:
-          script: |
-            const prCount = parseInt('${{ steps.count-prs.outputs.pr_count }}');
-            const author = '${{ steps.count-prs.outputs.author }}';
-            const mention = '@HardikGoyal2003'; // Mention for HardikGoyal2003
-            let message;
-            if (prCount === 1) {
-              message = `@${author} 1 PR merged successfully! ${mention}`;
-            } else if (prCount === 2) {
-              message = `@${author} You have merged 2 PRs successfully! ${mention}`;
-            } else {
-              message = `Excellent! @${author} You have merged ${prCount} PRs! ${mention}`;
-            }
-            github.rest.issues.createComment({
-              issue_number: context.payload.pull_request.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: message,
-              token: process.env.PAT_TOKEN // Use the PAT token
-            });
         env:
           PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
+        run: |
+          prCount=$(echo "${{ steps.count-prs.outputs.pr_count }}")
+          author=$(echo "${{ steps.count-prs.outputs.author }}")
+          mention="@HardikGoyal2003" # Mention for HardikGoyal2003
+          if [ "$prCount" -eq 1 ]; then
+            message="@${author} 1 PR merged successfully! ${mention}"
+          elif [ "$prCount" -eq 2 ]; then
+            message="@${author} You have merged 2 PRs successfully! ${mention}"
+          else
+            message="Excellent! @${author} You have merged ${prCount} PRs! ${mention}"
+          fi
+          curl -s -H "Authorization: token $PAT_TOKEN" -X POST \
+          -d "{\"body\":\"$message\"}" \
+          "https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments"
