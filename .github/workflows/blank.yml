@@ -5,13 +5,8 @@ on:
     types: [closed]
 
 jobs:
-<<<<<<< Updated upstream
   comment-on-merge:
     if: github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main'
-=======
-  check-prs:
-    if: github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'develop'
->>>>>>> Stashed changes
     runs-on: ubuntu-latest
 
     steps:
