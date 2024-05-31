@@ -18,7 +18,6 @@ jobs:
         with:
           node-version: '14'
 
-      - uses: ./.github/actions/merge
       - name: Count merged PRs
         id: count-prs
         run: |
