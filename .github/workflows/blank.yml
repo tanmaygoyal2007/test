@@ -11,7 +11,7 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v3
 
       - name: Set up Node.js
         uses: actions/setup-node@v2
@@ -23,7 +23,7 @@ jobs:
         run: |
           AUTHOR=$(jq -r '.pull_request.user.login' "$GITHUB_EVENT_PATH")
           REPO=${{ github.repository }}
-          TOKEN=${{ secrets.GITHUB_TOKEN }}
+          TOKEN=${{ secrets.PAT_TOKEN }}
           PR_COUNT=$(curl -s -H "Authorization: token $TOKEN" "https://api.github.com/repos/$REPO/pulls?state=closed" | jq "[.[] | select(.merged_at != null and .user.login == \"$AUTHOR\")] | length")
           echo "::set-output name=pr_count::$PR_COUNT"
           echo "::set-output name=author::$AUTHOR"
@@ -47,5 +47,8 @@ jobs:
               issue_number: context.payload.pull_request.number,
               owner: context.repo.owner,
               repo: context.repo.repo,
-              body: message
+              body: message,
+              token: process.env.PAT_TOKEN // Use the PAT token
             });
+        env:
+          PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
