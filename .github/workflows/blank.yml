@@ -41,7 +41,7 @@ jobs:
               message = `Congratulations @${author}, You have merged 1 PR successfully! ${mention_1}`;
             } else if (prCount == 2) {
                 message = `Congratulations @${author}, You have merged 2 PRs successfully! ${mention_2}`;
-            }else {
+            } else {
               message = `Congratulations @${author}, You have merged ${prCount} PRs successfully!`;
             }
             github.rest.issues.createComment({
