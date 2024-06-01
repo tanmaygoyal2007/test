@@ -5,7 +5,7 @@ on:
 # Working
 jobs:
   comment-on-merge:
-    if: github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'develop'
+    if: github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main'
 
     
           
