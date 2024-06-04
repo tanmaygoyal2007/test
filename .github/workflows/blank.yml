@@ -34,7 +34,7 @@ jobs:
           echo "Author: ${{ steps.count-prs.outputs.author }}"
 
       - name: Comment on the PR
-        uses: actions/github-script@v6
+        uses: actions/github-script@v5
         with:
           script: |
             const prCount = parseInt('${{ steps.count-prs.outputs.pr_count }}');
