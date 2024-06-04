@@ -1,28 +1,44 @@
 name: PR Merge Comment
+
 on:
   pull_request:
     types: [closed]
-# Working
+
 jobs:
   comment-on-merge:
     if: github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main'
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
+
       - name: Set up Node.js
         uses: actions/setup-node@v2
         with:
           node-version: '14'
+
       - name: Count merged PRs
         id: count-prs
         run: |
           AUTHOR=$(jq -r '.pull_request.user.login' "$GITHUB_EVENT_PATH")
           REPO=${{ github.repository }}
           TOKEN=${{ secrets.PAT_TOKEN }}
-          PR_COUNT=$(curl -s -H "Authorization: token $TOKEN" "https://api.github.com/repos/$REPO/pulls?state=closed" | jq "[.[] | select(.merged_at != null and .user.login == \"$AUTHOR\")] | length")
-          echo "::set-output name=pr_count::$PR_COUNT"
-          echo "::set-output name=author::$AUTHOR"
+          if [ -z "$TOKEN" ]; then
+            echo "Error: GitHub token is missing."
+            exit 1
+          fi
+          RESPONSE=$(curl -s -H "Authorization: token $TOKEN" "https://api.github.com/repos/$REPO/pulls?state=closed")
+          if echo "$RESPONSE" | jq -e . >/dev/null 2>&1; then
+            PR_COUNT=$(echo "$RESPONSE" | jq "[.[] | select(.merged_at != null and .user.login == \"$AUTHOR\")] | length")
+            echo "::set-output name=pr_count::$PR_COUNT"
+            echo "::set-output name=author::$AUTHOR"
+          else
+            echo "Error: Failed to fetch PRs or parse JSON response."
+            echo "::set-output name=pr_count::0"
+            echo "::set-output name=author::$AUTHOR"
+          fi
+
       - name: Comment on the PR
         env:
           PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
