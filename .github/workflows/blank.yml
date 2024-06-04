@@ -8,7 +8,7 @@ jobs:
   comment-on-merge:
     if: github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main'
     runs-on: ubuntu-latest
-# a
+
     permissions:
       issues: write
       pull-requests: write
@@ -22,12 +22,27 @@ jobs:
         with:
           node-version: '14'
 
+      - name: Check if the PR is from a fork
+        id: check-fork
+        run: |
+          if [ "${{ github.event.pull_request.head.repo.full_name }}" != "${{ github.repository }}" ]; then
+            echo "This PR is from a fork."
+            echo "::set-output name=from_fork::true"
+          else
+            echo "This PR is not from a fork."
+            echo "::set-output name=from_fork::false"
+          fi
+
       - name: Count merged PRs
         id: count-prs
         run: |
           AUTHOR=$(jq -r '.pull_request.user.login' "$GITHUB_EVENT_PATH")
           REPO=${{ github.repository }}
-          TOKEN=${{ secrets.PAT_TOKEN || github.token }}
+          if [ "${{ steps.check-fork.outputs.from_fork }}" == "true" ]; then
+            TOKEN=${{ secrets.GITHUB_TOKEN }}
+          else
+            TOKEN=${{ secrets.PAT_TOKEN }}
+          fi
           RESPONSE=$(curl -s -H "Authorization: token $TOKEN" "https://api.github.com/repos/$REPO/pulls?state=closed")
           if echo "$RESPONSE" | jq -e . >/dev/null 2>&1; then
             PR_COUNT=$(echo "$RESPONSE" | jq "[.[] | select(.merged_at != null and .user.login == \"$AUTHOR\")] | length")
@@ -51,6 +66,11 @@ jobs:
           else
             message="Excellent! @${author} You have merged ${prCount} PRs! ${mention}"
           fi
-          curl -s -H "Authorization: token ${{ secrets.PAT_TOKEN || github.token }}" -X POST \
+          if [ "${{ steps.check-fork.outputs.from_fork }}" == "true" ]; then
+            TOKEN=${{ secrets.GITHUB_TOKEN }}
+          else
+            TOKEN=${{ secrets.PAT_TOKEN }}
+          fi
+          curl -s -H "Authorization: token $TOKEN" -X POST \
           -d "{\"body\":\"$message\"}" \
           "https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments"
