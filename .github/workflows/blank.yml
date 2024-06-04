@@ -1,19 +1,23 @@
 name: PR Merge Comment
+
 on:
   pull_request:
     types: [closed]
-# Working
+
 jobs:
   comment-on-merge:
-    if: github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main' 
+    if: github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main'
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+
       - name: Set up Node.js
         uses: actions/setup-node@v2
         with:
           node-version: '14'
+
       - name: Count merged PRs
         id: count-prs
         run: |
@@ -23,20 +27,31 @@ jobs:
           PR_COUNT=$(curl -s -H "Authorization: token $TOKEN" "https://api.github.com/repos/$REPO/pulls?state=closed" | jq "[.[] | select(.merged_at != null and .user.login == \"$AUTHOR\")] | length")
           echo "::set-output name=pr_count::$PR_COUNT"
           echo "::set-output name=author::$AUTHOR"
-      - name: Comment on the PR
-        env:
-          PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
+          
+      - name: Debug outputs
         run: |
-          prCount=$(echo "${{ steps.count-prs.outputs.pr_count }}")
-          author=$(echo "${{ steps.count-prs.outputs.author }}")
-          mention="@HardikGoyal2003" # Mention for HardikGoyal2003
-          if [ "$prCount" -eq 1 ]; then
-            message="@${author} 1 PR merged successfully! ${mention}"
-          elif [ "$prCount" -eq 2 ]; then
-            message="@${author} You have merged 2 PRs successfully! ${mention}"
-          else
-            message="Excellent! @${author} You have merged ${prCount} PRs! ${mention}"
-          fi
-          curl -s -H "Authorization: token $PAT_TOKEN" -X POST \
-          -d "{\"body\":\"$message\"}" \
-          "https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments"
+          echo "PR Count: ${{ steps.count-prs.outputs.pr_count }}"
+          echo "Author: ${{ steps.count-prs.outputs.author }}"
+
+      - name: Comment on the PR
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const prCount = parseInt('${{ steps.count-prs.outputs.pr_count }}');
+            const author = '${{ steps.count-prs.outputs.author }}';
+            const mention_1 = '@HardikGoyal2003';
+            const mention_2 = '@AFZL210';
+            let message;
+            if (prCount === 1) {
+              message = `Congratulations @${author}, You have merged 1 PR successfully! ${mention_1}`;
+            } else if (prCount === 2) {
+              message = `Congratulations @${author}, You have merged 2 PRs successfully! ${mention_2}`;
+            } else {
+              message = `Congratulations @${author}, You have merged ${prCount} PRs successfully!`;
+            }
+            github.rest.issues.createComment({
+              issue_number: context.payload.pull_request.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: message
+            });
