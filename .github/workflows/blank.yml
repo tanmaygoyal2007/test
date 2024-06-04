@@ -5,18 +5,7 @@ on:
 # Working
 jobs:
   comment-on-merge:
-    if: github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main'
-
-    
-          
-            
-    
-
-          
-          Expand Down
-    
-    
-  
+    if: github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'develop'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
