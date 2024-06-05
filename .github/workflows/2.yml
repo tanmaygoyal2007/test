@@ -49,6 +49,9 @@ jobs:
           EOF
         env:
           PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
+          GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_ACTOR: ${{ github.actor }}
 
       - name: Comment on PR
         uses: actions/github-script@v6
