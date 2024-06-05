@@ -69,7 +69,4 @@ jobs:
               issue_number: context.issue.number,
               body: comment
             });
-        env:
-          PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
-        with:
           count: ${{ steps.pr-count.outputs.count }}
