@@ -21,12 +21,33 @@ jobs:
       - name: Count merged PRs
         id: count-prs
         run: |
+          echo "Fetching author of the PR..."
           AUTHOR=$(jq -r '.pull_request.user.login' "$GITHUB_EVENT_PATH")
+          echo "Author: $AUTHOR"
+          
+          echo "Fetching repository information..."
           REPO=${{ github.repository }}
+          echo "Repository: $REPO"
+
+          echo "Fetching token..."
           TOKEN=${{ secrets.PAT_TOKEN }}
-          PR_COUNT=$(curl -s -H "Authorization: token $TOKEN" "https://api.github.com/repos/$REPO/pulls?state=closed" | jq "[.[] | select(.merged_at != null and .user.login == \"$AUTHOR\")] | length")
+          echo "Token fetched."
+
+          echo "Fetching PR count for the author..."
+          RESPONSE=$(curl -s -H "Authorization: token $TOKEN" "https://api.github.com/repos/$REPO/pulls?state=closed")
+          echo "Response: $RESPONSE"
+
+          if echo "$RESPONSE" | jq -e . >/dev/null 2>&1; then
+            PR_COUNT=$(echo "$RESPONSE" | jq "[.[] | select(.merged_at != null and .user.login == \"$AUTHOR\")] | length")
+            echo "PR count calculated: $PR_COUNT"
+          else
+            echo "Error: Invalid JSON response"
+            exit 1
+          fi
+
           echo "::set-output name=pr_count::$PR_COUNT"
           echo "::set-output name=author::$AUTHOR"
+
 
       - name: Comment on the PR
         env:
