@@ -3,15 +3,11 @@ name: PR Merge Comment
 on:
   pull_request:
     types: [closed]
-# a
+
 jobs:
-  comment-on-merge:
+  check-prs:
     if: github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main'
     runs-on: ubuntu-latest
-
-    permissions:
-      issues: write
-      pull-requests: write
 
     steps:
       - name: Checkout repository
@@ -22,39 +18,19 @@ jobs:
         with:
           node-version: '14'
 
-      - name: Check if the PR is from a fork
-        id: check-fork
-        run: |
-          if [ "${{ github.event.pull_request.head.repo.full_name }}" != "${{ github.repository }}" ]; then
-            echo "This PR is from a fork."
-            echo "::set-output name=from_fork::true"
-          else
-            echo "This PR is not from a fork."
-            echo "::set-output name=from_fork::false"
-          fi
-
       - name: Count merged PRs
         id: count-prs
         run: |
           AUTHOR=$(jq -r '.pull_request.user.login' "$GITHUB_EVENT_PATH")
           REPO=${{ github.repository }}
-          if [ "${{ steps.check-fork.outputs.from_fork }}" == "true" ]; then
-            TOKEN=${{ secrets.GITHUB_TOKEN }}
-          else
-            TOKEN=${{ secrets.PAT_TOKEN }}
-          fi
-          RESPONSE=$(curl -s -H "Authorization: token $TOKEN" "https://api.github.com/repos/$REPO/pulls?state=closed")
-          if echo "$RESPONSE" | jq -e . >/dev/null 2>&1; then
-            PR_COUNT=$(echo "$RESPONSE" | jq "[.[] | select(.merged_at != null and .user.login == \"$AUTHOR\")] | length")
-            echo "::set-output name=pr_count::$PR_COUNT"
-            echo "::set-output name=author::$AUTHOR"
-          else
-            echo "Error: Failed to fetch PRs or parse JSON response."
-            echo "::set-output name=pr_count::0"
-            echo "::set-output name=author::$AUTHOR"
-          fi
+          TOKEN=${{ secrets.PAT_TOKEN }}
+          PR_COUNT=$(curl -s -H "Authorization: token $TOKEN" "https://api.github.com/repos/$REPO/pulls?state=closed" | jq "[.[] | select(.merged_at != null and .user.login == \"$AUTHOR\")] | length")
+          echo "::set-output name=pr_count::$PR_COUNT"
+          echo "::set-output name=author::$AUTHOR"
 
       - name: Comment on the PR
+        env:
+          PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
         run: |
           prCount=$(echo "${{ steps.count-prs.outputs.pr_count }}")
           author=$(echo "${{ steps.count-prs.outputs.author }}")
@@ -66,11 +42,6 @@ jobs:
           else
             message="Excellent! @${author} You have merged ${prCount} PRs! ${mention}"
           fi
-          if [ "${{ steps.check-fork.outputs.from_fork }}" == "true" ]; then
-            TOKEN=${{ secrets.GITHUB_TOKEN }}
-          else
-            TOKEN=${{ secrets.PAT_TOKEN }}
-          fi
-          curl -s -H "Authorization: token $TOKEN" -X POST \
+          curl -s -H "Authorization: token $PAT_TOKEN" -X POST \
           -d "{\"body\":\"$message\"}" \
           "https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments"
