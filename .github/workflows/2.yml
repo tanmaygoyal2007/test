@@ -1,0 +1,76 @@
+name: Comment on PR Merge
+
+on:
+  pull_request:
+    types: [closed]
+    branches:
+      - main
+
+jobs:
+  comment-on-pr:
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.merged == true
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'
+
+      - name: Install octokit
+        run: npm install @octokit/core
+
+      - name: Get PR Author's Merged PR Count
+        id: pr-count
+        run: |
+          node <<EOF
+          const { Octokit } = require("@octokit/core");
+          const octokit = new Octokit({ auth: process.env.PAT_TOKEN });
+
+          async function getMergedPRCount() {
+            const owner = process.env.GITHUB_REPOSITORY_OWNER;
+            const repo = process.env.GITHUB_REPOSITORY.split('/')[1];
+            const author = process.env.GITHUB_ACTOR;
+
+            const response = await octokit.request('GET /search/issues', {
+              q: `repo:${owner}/${repo} author:${author} is:pr is:merged`,
+            });
+
+            return response.data.total_count;
+          }
+
+          getMergedPRCount().then(count => {
+            console.log(`::set-output name=count::${count}`);
+          }).catch(error => {
+            console.error(error);
+            process.exit(1);
+          });
+          EOF
+        env:
+          PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
+
+      - name: Comment on PR
+        uses: actions/github-script@v6
+        with:
+          script: |
+            const count = parseInt(core.getInput('count'));
+            let comment;
+            if (count === 1) {
+              comment = "1 PR merged successfully!";
+            } else if (count === 2) {
+              comment = "You have merged 2 PRs successfully!";
+            } else {
+              comment = `Excellent! You have merged ${count} PRs!`;
+            }
+            github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: comment
+            });
+        env:
+          PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
+        with:
+          count: ${{ steps.pr-count.outputs.count }}
