@@ -38,12 +38,11 @@ jobs:
               q: `repo:${owner}/${repo} author:${author} is:pr is:merged`,
             });
 
-            return response.data.total_count;
+            const count = response.data.total_count;
+            console.log(`::set-output name=count::${count}`);
           }
 
-          getMergedPRCount().then(count => {
-            console.log(`::set-output name=count::${count}`);
-          }).catch(error => {
+          getMergedPRCount().catch(error => {
             console.error(error);
             process.exit(1);
           });
