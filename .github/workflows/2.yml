@@ -11,22 +11,21 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event.pull_request.merged == true
     steps:
-      # Checkout the repository code (optional)
-      # - name: Checkout repository
-      #   uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: '16'
-# c
-      - name: Install Octokit
+
+      - name: Install octokit
         run: npm install @octokit/core
 
-      - name: Get Merged PR Count (Fixed)
+      - name: Get PR Author's Merged PR Count
         id: pr-count
         run: |
-          # This script retrieves the author's merged PR count.
+          node <<EOF
           console.log("Starting script execution...");
 
           const { Octokit } = require("@octokit/core");
@@ -34,51 +33,52 @@ jobs:
           const fs = require('fs');
 
           async function getMergedPRCount() {
-            const owner = process.env.GITHUB_REPOSITORY_OWNER;
-            const repo = process.env.GITHUB_REPOSITORY.split('/')[1];
-            const author = process.env.GITHUB_ACTOR;
+              const owner = process.env.GITHUB_REPOSITORY_OWNER;
+              const repo = process.env.GITHUB_REPOSITORY.split('/')[1];
+              const author = process.env.GITHUB_ACTOR;
 
-            console.log('GITHUB_REPOSITORY_OWNER:', owner);
-            console.log('GITHUB_REPOSITORY:', process.env.GITHUB_REPOSITORY);
-            console.log('Extracted repo:', repo);
-            console.log('GITHUB_ACTOR:', author);
+              console.log('GITHUB_REPOSITORY_OWNER:', owner);
+              console.log('GITHUB_REPOSITORY:', process.env.GITHUB_REPOSITORY);
+              console.log('Extracted repo:', repo);
+              console.log('GITHUB_ACTOR:', author);
 
-            console.log("Executing query...");
-            const query = `repo:${owner}/${repo} author:${author} is:pr is:merged`;
-            console.log('Constructed query:', query);
+              console.log("Executing query...");
+              const query = `repo:${owner}/${repo} author:${author} is:pr is:merged`;
+              console.log('Constructed query:', query);
 
-            try {
-              console.log("Entering try block...");
-              const response = await octokit.request('GET /search/issues', {
-                q: query,
-              });
+              try {
+                  console.log("Entering try block...");
+                  const response = await octokit.request('GET /search/issues', {
+                      q: query,
+                  });
 
-              const count = response.data.total_count;
-              console.log('Total merged PR count:', count);
-              fs.appendFileSync(process.env.GITHUB_OUTPUT, `count=${count}\n`);
-            } catch (error) {
-              console.error('Error fetching merged PR count:', error);
-              process.exit(1);
-            }
+                  const count = response.data.total_count;
+                  console.log('Total merged PR count:', count);
+                  fs.appendFileSync(process.env.GITHUB_OUTPUT, `count=${count}\n`);
+              } catch (error) {
+                  console.error('Error fetching merged PR count:', error);
+                  process.exit(1);
+              }
           }
 
           console.log("Enter function...");
           getMergedPRCount().then(() => {
-            console.log("Exiting function...");
+              console.log("Exiting function...");
           }).catch(error => {
-            console.error("Error in function execution:", error);
-            process.exit(1);
+              console.error("Error in function execution:", error);
+              process.exit(1);
           });
 
           console.log("Script execution completed.");
+          EOF
         env:
           PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
           GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_ACTOR: ${{ github.actor }}
-          GITHUB_OUTPUT: $GITHUB_ENV  # Store the count for the next step
+          GITHUB_OUTPUT: $GITHUB_ENV
 
-      - name: Comment on PR (Fixed)
+      - name: Comment on PR
         uses: actions/github-script@v6
         with:
           script: |
