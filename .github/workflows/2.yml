@@ -19,58 +19,53 @@ jobs:
         with:
           node-version: '18'
 
-      - name: Install octokit
+      - name: Install dependencies
         run: npm install @octokit/core
 
       - name: Get PR Author's Merged PR Count
         id: pr-count
         run: |
-          node <<EOF
-          console.log("Starting script execution...");
+          echo "Starting script execution..."
 
-          const { Octokit } = require("@octokit/core");
-          const octokit = new Octokit({ auth: process.env.PAT_TOKEN });
-          const fs = require('fs');
+          echo "const { Octokit } = require('@octokit/core');" > script.js
+          echo "const fs = require('fs');" >> script.js
+          echo "const octokit = new Octokit({ auth: process.env.PAT_TOKEN });" >> script.js
 
-          async function getMergedPRCount() {
-              const owner = process.env.GITHUB_REPOSITORY_OWNER;
-              const repo = process.env.GITHUB_REPOSITORY.split('/')[1];
-              const author = process.env.GITHUB_ACTOR;
+          echo "async function getMergedPRCount() {" >> script.js
+          echo "    const owner = process.env.GITHUB_REPOSITORY_OWNER;" >> script.js
+          echo "    const repo = process.env.GITHUB_REPOSITORY.split('/')[1];" >> script.js
+          echo "    const author = process.env.GITHUB_ACTOR;" >> script.js
+          echo "    console.log('GITHUB_REPOSITORY_OWNER:', owner);" >> script.js
+          echo "    console.log('GITHUB_REPOSITORY:', process.env.GITHUB_REPOSITORY);" >> script.js
+          echo "    console.log('Extracted repo:', repo);" >> script.js
+          echo "    console.log('GITHUB_ACTOR:', author);" >> script.js
+          echo "    console.log('Executing query...');" >> script.js
+          echo "    const query = \`repo:${owner}/${repo} author:${author} is:pr is:merged\`;" >> script.js
+          echo "    console.log('Constructed query:', query);" >> script.js
+          echo "    try {" >> script.js
+          echo "        console.log('Entering try block...');" >> script.js
+          echo "        const response = await octokit.request('GET /search/issues', { q: query });" >> script.js
+          echo "        const count = response.data.total_count;" >> script.js
+          echo "        console.log('Total merged PR count:', count);" >> script.js
+          echo "        fs.appendFileSync(process.env.GITHUB_OUTPUT, \`count=${count}\n\`);" >> script.js
+          echo "    } catch (error) {" >> script.js
+          echo "        console.error('Error fetching merged PR count:', error);" >> script.js
+          echo "        process.exit(1);" >> script.js
+          echo "    }" >> script.js
+          echo "}" >> script.js
 
-              console.log('GITHUB_REPOSITORY_OWNER:', owner);
-              console.log('GITHUB_REPOSITORY:', process.env.GITHUB_REPOSITORY);
-              console.log('Extracted repo:', repo);
-              console.log('GITHUB_ACTOR:', author);
+          echo "console.log('Enter function...');" >> script.js
+          echo "getMergedPRCount().then(() => {" >> script.js
+          echo "    console.log('Exiting function...');" >> script.js
+          echo "}).catch(error => {" >> script.js
+          echo "    console.error('Error in function execution:', error);" >> script.js
+          echo "    process.exit(1);" >> script.js
+          echo "});" >> script.js
 
-              console.log("Executing query...");
-              const query = `repo:${owner}/${repo} author:${author} is:pr is:merged`
-              console.log('Constructed query:', query);
+          echo "console.log('Script execution completed.');" >> script.js
 
-              try {
-                  console.log("Entering try block...");
-                  const response = await octokit.request('GET /search/issues', {
-                      q: query,
-                  });
+          node script.js
 
-                  const count = response.data.total_count;
-                  console.log('Total merged PR count:', count);
-                  fs.appendFileSync(process.env.GITHUB_OUTPUT, `count=${count}\n`);
-              } catch (error) {
-                  console.error('Error fetching merged PR count:', error);
-                  process.exit(1);
-              }
-          }
-
-          console.log("Enter function...");
-          getMergedPRCount().then(() => {
-              console.log("Exiting function...");
-          }).catch(error => {
-              console.error("Error in function execution:", error);
-              process.exit(1);
-          });
-
-          console.log("Script execution completed.");
-          EOF
         env:
           PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
           GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
