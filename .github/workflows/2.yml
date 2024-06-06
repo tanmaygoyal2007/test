@@ -12,7 +12,7 @@ jobs:
     if: github.event.pull_request.merged == true
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Set up Node.js
         uses: actions/setup-node@v3
@@ -40,10 +40,13 @@ jobs:
               console.log('Extracted repo:', repo);
               console.log('GITHUB_ACTOR:', author);
 
-              const query = `repo:${owner}/${repo} author:${author} is:pr is:merged`;
+              console.log("Executing query")
+              const query = `repo:${owner}/${repo} author:${author} is:pr is:merged`
+              console.log("Completed query")
               console.log('Constructed query:', query);
 
               try {
+                  console.log("Entering try block")
                   const response = await octokit.request('GET /search/issues', {
                       q: query,
                   });
