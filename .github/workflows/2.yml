@@ -29,10 +29,11 @@ jobs:
         echo "Repository: $REPO"
         
         echo "Fetching GitHub token..."
-        TOKEN=${{ secrets.GITHUB_TOKEN }}
+        TOKEN=${{ secrets.PAT_TOKEN }}
         
         echo "Verifying GitHub token..."
         VERIFY_TOKEN=$(curl -s -H "Accept: application/vnd.github+json" -H "Authorization: Bearer $TOKEN" "https://api.github.com/user")
+        echo "Token verification response: $VERIFY_TOKEN"
         if echo "$VERIFY_TOKEN" | jq -e .id > /dev/null; then
           echo "Token is valid."
         else
