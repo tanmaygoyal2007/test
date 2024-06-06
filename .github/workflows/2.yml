@@ -50,7 +50,7 @@ jobs:
 
                   const count = response.data.total_count;
                   console.log('Total merged PR count:', count);
-                  fs.writeFileSync(process.env.GITHUB_OUTPUT, `count=${count}`);
+                  fs.appendFileSync(process.env.GITHUB_OUTPUT, `count=${count}\n`);
               } catch (error) {
                   console.error('Error fetching merged PR count:', error);
                   process.exit(1);
@@ -90,4 +90,6 @@ jobs:
               issue_number: context.issue.number,
               body: comment
             });
+          env:
+            PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
           count: ${{ steps.pr-count.outputs.count }}
