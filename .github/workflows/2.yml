@@ -44,7 +44,7 @@ jobs:
 
               console.log("Executing query...");
               const query = `repo:${owner}/${repo} author:${author} is:pr is:merged`;
-              console.log("Constructed query:", query);
+              console.log('Constructed query:', query);
 
               try {
                   console.log("Entering try block...");
