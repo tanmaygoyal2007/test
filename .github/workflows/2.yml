@@ -11,50 +11,60 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
-      with:
-        ref: ${{ github.event.pull_request.head.ref }} # Log the branch being checked out
-      env:
-        GITHUB_REF: ${{ github.ref }} # Log the GitHub ref
 
     - name: Set up Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '14' # Adjust the version if necessary
-      env:
-        NODE_VERSION: '14' # Log the Node.js version
+        node-version: '18'
 
     - name: Count merged PRs
       id: count-prs
       run: |
+        echo "Fetching PR author..."
         AUTHOR=$(jq -r '.pull_request.user.login' "$GITHUB_EVENT_PATH")
+        echo "Author: $AUTHOR"
+        
+        echo "Fetching repository information..."
         REPO=${{ github.repository }}
+        echo "Repository: $REPO"
+        
+        echo "Fetching GitHub token..."
         TOKEN=${{ secrets.GITHUB_TOKEN }}
-        echo "Author: $AUTHOR" # Log the author of the PR
-        echo "Repository: $REPO" # Log the repository
-        echo "Token: $TOKEN" # Log the GitHub token
+        echo "Token: $TOKEN"
+        
+        echo "Counting merged PRs by the author..."
         PR_COUNT=$(curl -s -H "Authorization: token $TOKEN" "https://api.github.com/repos/$REPO/pulls?state=closed" | jq "[.[] | select(.merged_at != null and .user.login == \"$AUTHOR\")] | length")
-        echo "PR Count: $PR_COUNT" # Log the PR count
+        echo "PR Count: $PR_COUNT"
+        
         echo "::set-output name=pr_count::$PR_COUNT"
 
     - name: Comment on the PR
       if: steps.count-prs.outputs.pr_count != '0'
-      uses: actions/github-script@v6
-      with:
-        script: |
-          const prCount = ${{ steps.count-prs.outputs.pr_count }};
-          let message;
-          if (prCount == 1) {
-            message = '1 PR merged successfully!';
-          } else if (prCount == 2) {
-            message = 'You have merged 2 PRs successfully!';
-          } else {
-            message = `Excellent! You have merged ${prCount} PRs!`;
-          }
-          console.log("PR Count:", prCount); // Log the PR count
-          console.log("Message:", message); // Log the comment message
-          github.rest.issues.createComment({
-            issue_number: context.payload.pull_request.number,
-            owner: context.repo.owner,
-            repo: context.repo.repo,
-            body: message
-          });
+      run: |
+        PR_COUNT=${{ steps.count-prs.outputs.pr_count }}
+        echo "PR Count: $PR_COUNT"
+        
+        echo "Constructing message..."
+        if [ "$PR_COUNT" -eq 1 ]; then
+          MESSAGE="1 PR merged successfully!"
+        elif [ "$PR_COUNT" -eq 2 ]; then
+          MESSAGE="You have merged 2 PRs successfully!"
+        else
+          MESSAGE="Excellent! You have merged $PR_COUNT PRs!"
+        fi
+        echo "Message: $MESSAGE"
+        
+        echo "Posting comment to the PR..."
+        PR_NUMBER=$(jq -r '.pull_request.number' "$GITHUB_EVENT_PATH")
+        echo "PR Number: $PR_NUMBER"
+        
+        RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -X POST -H "Authorization: token $TOKEN" -H "Content-Type: application/json" \
+          -d "{\"body\": \"$MESSAGE\"}" \
+          "https://api.github.com/repos/$REPO/issues/$PR_NUMBER/comments")
+        
+        if [ "$RESPONSE" -eq 201 ]; then
+          echo "Comment posted successfully!"
+        else
+          echo "Failed to post comment. HTTP status: $RESPONSE"
+          exit 1
+        fi
