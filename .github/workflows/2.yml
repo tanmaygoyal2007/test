@@ -1,52 +1,47 @@
-name: Comment on PR Merge
+name: PR Merge Comment
 
 on:
   pull_request:
     types: [closed]
-    branches:
-      - main
 
 jobs:
-  comment-on-pr:
+  check-prs:
+    if: github.event.pull_request.merged == true && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    if: github.event.pull_request.merged == true
     steps:
-      - name: Set up cURL
-        uses: wei/curl@v1
+    - name: Checkout repository
+      uses: actions/checkout@v4
 
-      - name: Get PR Author's Merged PR Count
-        id: pr-count
-        run: |
-          owner="${{ github.repository_owner }}"
-          repo="${{ github.repository }}"
-          author="${{ github.actor }}"
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
 
-          query="repo:$owner/$repo author:$author is:pr is:merged"
-          url="https://api.github.com/search/issues?q=$(echo $query | sed 's/ /%20/g')"
+    - name: Count merged PRs
+      id: count-prs
+      run: |
+        AUTHOR=$(jq -r '.pull_request.user.login' "$GITHUB_EVENT_PATH")
+        REPO=${{ github.repository }}
+        TOKEN=${{ secrets.GITHUB_TOKEN }}
+        PR_COUNT=$(curl -s -H "Authorization: token $TOKEN" "https://api.github.com/repos/$REPO/pulls?state=closed" | jq "[.[] | select(.merged_at != null and .user.login == \"$AUTHOR\")] | length")
+        echo "::set-output name=pr_count::$PR_COUNT"
 
-          count=$(curl -s -H "Authorization: token ${{ secrets.PAT_TOKEN }}" $url | jq -r .total_count)
-          echo "::set-output name=count::$count"
-
-      - name: Comment on PR
-        uses: actions/github-script@v6
-        with:
-          script: |
-            const count = parseInt('${{ steps.pr-count.outputs.count }}');
-            console.log('Merged PR count from previous step:', count);
-            let comment;
-            if (count === 1) {
-              comment = "1 PR merged successfully!";
-            } else if (count === 2) {
-              comment = "You have merged 2 PRs successfully!";
-            } else {
-              comment = `Excellent! You have merged ${count} PRs!`;
-            }
-            console.log('Comment to post on PR:', comment);
-            github.rest.issues.createComment({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              issue_number: context.issue.number,
-              body: comment
-            });
-        env:
-          PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
+    - name: Comment on the PR
+      uses: actions/github-script@v6
+      with:
+        script: |
+          const prCount = ${{ steps.count-prs.outputs.pr_count }};
+          let message;
+          if (prCount == 1) {
+            message = '1 PR merged successfully!';
+          } else if (prCount == 2) {
+            message = 'You have merged 2 PRs successfully!';
+          } else {
+            message = `Excellent! You have merged ${prCount} PRs!`;
+          }
+          github.rest.issues.createComment({
+            issue_number: context.payload.pull_request.number,
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            body: message
+          });
