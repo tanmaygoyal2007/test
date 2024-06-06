@@ -73,7 +73,7 @@ jobs:
         uses: actions/github-script@v6
         with:
           script: |
-            const count = parseInt(core.getInput('count'));
+            const count = parseInt('${{ steps.pr-count.outputs.count }}');
             console.log('Merged PR count from previous step:', count);
             let comment;
             if (count === 1) {
@@ -92,5 +92,3 @@ jobs:
             });
         env:
           PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
-        inputs:
-          count: ${{ steps.pr-count.outputs.count }}
