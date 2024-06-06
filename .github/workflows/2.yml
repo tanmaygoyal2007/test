@@ -25,7 +25,9 @@ jobs:
       - name: Get PR Author's Merged PR Count
         id: pr-count
         run: |
+          console.log("uijibbbbbbbbbbbbbbbbbbbbbbbbbbbbbbiohi")
           node <<EOF
+          console.log("PPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPPP")
           const { Octokit } = require("@octokit/core");
           const octokit = new Octokit({ auth: process.env.PAT_TOKEN });
           const fs = require('fs');
@@ -60,17 +62,16 @@ jobs:
               }
           }
 
-          getMergedPRCount().catch(error => {
-              console.error('Error in getMergedPRCount function:', error);
-              process.exit(1);
-          });
+          console.log("Enter function")  
+          getMergedPRCount()
+          console.log("Exiting function")  
           EOF
         env:
           PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
           GITHUB_REPOSITORY_OWNER: ${{ github.repository_owner }}
           GITHUB_REPOSITORY: ${{ github.repository }}
           GITHUB_ACTOR: ${{ github.actor }}
-          # GITHUB_OUTPUT: $GITHUB_ENV
+          GITHUB_OUTPUT: ${{GITHUB_ENV}}
 
       - name: Comment on PR
         uses: actions/github-script@v6
