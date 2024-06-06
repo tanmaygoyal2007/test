@@ -11,11 +11,17 @@ jobs:
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
+      with:
+        ref: ${{ github.event.pull_request.head.ref }} # Log the branch being checked out
+      env:
+        GITHUB_REF: ${{ github.ref }} # Log the GitHub ref
 
     - name: Set up Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '14' # Adjust the version if necessary
+      env:
+        NODE_VERSION: '14' # Log the Node.js version
 
     - name: Count merged PRs
       id: count-prs
@@ -23,7 +29,11 @@ jobs:
         AUTHOR=$(jq -r '.pull_request.user.login' "$GITHUB_EVENT_PATH")
         REPO=${{ github.repository }}
         TOKEN=${{ secrets.GITHUB_TOKEN }}
+        echo "Author: $AUTHOR" # Log the author of the PR
+        echo "Repository: $REPO" # Log the repository
+        echo "Token: $TOKEN" # Log the GitHub token
         PR_COUNT=$(curl -s -H "Authorization: token $TOKEN" "https://api.github.com/repos/$REPO/pulls?state=closed" | jq "[.[] | select(.merged_at != null and .user.login == \"$AUTHOR\")] | length")
+        echo "PR Count: $PR_COUNT" # Log the PR count
         echo "::set-output name=pr_count::$PR_COUNT"
 
     - name: Comment on the PR
@@ -40,6 +50,8 @@ jobs:
           } else {
             message = `Excellent! You have merged ${prCount} PRs!`;
           }
+          console.log("PR Count:", prCount); // Log the PR count
+          console.log("Message:", message); // Log the comment message
           github.rest.issues.createComment({
             issue_number: context.payload.pull_request.number,
             owner: context.repo.owner,
