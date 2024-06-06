@@ -92,4 +92,5 @@ jobs:
             });
           env:
             PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
-          count: ${{ steps.pr-count.outputs.count }}
+          inputs:
+            count: ${{ steps.pr-count.outputs.count }}
