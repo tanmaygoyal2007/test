@@ -31,6 +31,15 @@ jobs:
         echo "Fetching GitHub token..."
         TOKEN=${{ secrets.GITHUB_TOKEN }}
         
+        echo "Verifying GitHub token..."
+        VERIFY_TOKEN=$(curl -s -H "Accept: application/vnd.github+json" -H "Authorization: Bearer $TOKEN" "https://api.github.com/user")
+        if echo "$VERIFY_TOKEN" | jq -e .id > /dev/null; then
+          echo "Token is valid."
+        else
+          echo "Invalid GitHub token."
+          exit 1
+        fi
+        
         echo "Counting merged PRs by the author..."
         PR_COUNT=$(curl -s -H "Accept: application/vnd.github+json" -H "Authorization: Bearer $TOKEN" -H "X-GitHub-Api-Version: 2022-11-28" "https://api.github.com/repos/$REPO/pulls?state=closed" | jq "[.[] | select(.merged_at != null and .user.login == \"$AUTHOR\")] | length")
         echo "PR Count: $PR_COUNT"
