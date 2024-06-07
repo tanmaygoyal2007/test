@@ -1,35 +1,63 @@
 name: PR Merge Comment
+
 on:
   pull_request:
     types: [closed]
-# Working
+
 jobs:
   comment-on-merge:
-    if: github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main'  
+    if: github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'main'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+
       - name: Set up Node.js
-        uses: actions/setup-node@v2
+        uses: actions/setup-node@v4
         with:
-          node-version: '14'
+          node-version: '18'
+
       - name: Count merged PRs
         id: count-prs
         run: |
+          echo "Fetching PR author..."
           AUTHOR=$(jq -r '.pull_request.user.login' "$GITHUB_EVENT_PATH")
+          echo "Author: $AUTHOR"
+          
+          echo "Fetching repository information..."
           REPO=${{ github.repository }}
+          echo "Repository: $REPO"
+          
+          echo "Fetching GitHub token..."
           TOKEN=${{ secrets.PAT_TOKEN }}
+          
+          echo "Verifying GitHub token..."
+          VERIFY_TOKEN=$(curl -s -H "Accept: application/vnd.github+json" -H "Authorization: token $TOKEN" "https://api.github.com/user")
+          echo "Token verification response: $VERIFY_TOKEN"
+          if echo "$VERIFY_TOKEN" | jq -e .id > /dev/null; then
+            echo "Token is valid."
+          else
+            echo "Invalid GitHub token."
+            exit 1
+          fi
+          
+          echo "Counting merged PRs by the author..."
           PR_COUNT=$(curl -s -H "Authorization: token $TOKEN" "https://api.github.com/repos/$REPO/pulls?state=closed" | jq "[.[] | select(.merged_at != null and .user.login == \"$AUTHOR\")] | length")
+          echo "PR Count: $PR_COUNT"
+          
           echo "::set-output name=pr_count::$PR_COUNT"
           echo "::set-output name=author::$AUTHOR"
+
       - name: Comment on the PR
         env:
           PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
         run: |
-          prCount=$(echo "${{ steps.count-prs.outputs.pr_count }}")
-          author=$(echo "${{ steps.count-prs.outputs.author }}")
+          prCount=${{ steps.count-prs.outputs.pr_count }}
+          author=${{ steps.count-prs.outputs.author }}
           mention="@HardikGoyal2003" # Mention for HardikGoyal2003
+          echo "PR Count: $prCount"
+          
+          echo "Constructing message..."
           if [ "$prCount" -eq 1 ]; then
             message="@${author} 1 PR merged successfully! ${mention}"
           elif [ "$prCount" -eq 2 ]; then
@@ -37,6 +65,22 @@ jobs:
           else
             message="Excellent! @${author} You have merged ${prCount} PRs! ${mention}"
           fi
-          curl -s -H "Authorization: token $PAT_TOKEN" -X POST \
-          -d "{\"body\":\"$message\"}" \
-          "https://api.github.com/repos/${{ github.repository }}/issues/${{ github.event.pull_request.number }}/comments"
+          echo "Message: $message"
+          
+          echo "Posting comment to the PR..."
+          PR_NUMBER=${{ github.event.pull_request.number }}
+          echo "PR Number: $PR_NUMBER"
+          
+          RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -L \
+            -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: token $PAT_TOKEN" \
+            "https://api.github.com/repos/${{ github.repository }}/issues/$PR_NUMBER/comments" \
+            -d "{\"body\": \"$message\"}")
+          
+          if [ "$RESPONSE" -eq 201 ]; then
+            echo "Comment posted successfully!"
+          else
+            echo "Failed to post comment. HTTP status: $RESPONSE"
+            exit 1
+          fi
