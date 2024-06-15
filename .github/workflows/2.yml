@@ -1,5 +1,4 @@
 name: PR Merge Comment
-# e
 on:
   pull_request:
     types: [closed]
