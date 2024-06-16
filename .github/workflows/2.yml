@@ -19,6 +19,8 @@ jobs:
 
       - name: Count merged PRs
         id: count-prs
+        env:
+          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
         run: |
           echo "Fetching PR author..."
           AUTHOR=$(jq -r '.pull_request.user.login' "$GITHUB_EVENT_PATH")
@@ -29,17 +31,17 @@ jobs:
           echo "Repository: $REPO"
           
           echo "Fetching GitHub token..."
-          TOKEN=${{ secrets.PAT_TOKEN }}
+          TOKEN=${GITHUB_TOKEN}
           
-          # echo "Verifying GitHub token..."
-          # VERIFY_TOKEN=$(curl -s -H "Accept: application/vnd.github+json" -H "Authorization: token $TOKEN" "https://api.github.com/user")
-          # echo "Token verification response: $VERIFY_TOKEN"
-          # if echo "$VERIFY_TOKEN" | jq -e .id > /dev/null; then
-          #   echo "Token is valid."
-          # else
-          #   echo "Invalid GitHub token."
-          #   exit 1
-          # fi
+          echo "Verifying GitHub token..."
+          VERIFY_TOKEN=$(curl -s -H "Accept: application/vnd.github+json" -H "Authorization: token $TOKEN" "https://api.github.com/user")
+          echo "Token verification response: $VERIFY_TOKEN"
+          if echo "$VERIFY_TOKEN" | jq -e .id > /dev/null; then
+            echo "Token is valid."
+          else
+            echo "Invalid GitHub token."
+            exit 1
+          fi
           
           echo "Counting merged PRs by the author..."
           PR_COUNT=$(curl -s -H "Authorization: token $TOKEN" "https://api.github.com/search/issues?q=repo:${REPO}+type:pr+state:closed+author:${AUTHOR}" | jq '[.items[] | select(.pull_request.merged_at != null)] | length')
@@ -50,7 +52,7 @@ jobs:
 
       - name: Comment on the PR
         env:
-          PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
         run: |
           prCount=${{ steps.count-prs.outputs.pr_count }}
           author=${{ steps.count-prs.outputs.author }}
@@ -74,7 +76,7 @@ jobs:
           RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" -L \
             -X POST \
             -H "Accept: application/vnd.github+json" \
-            -H "Authorization: token $PAT_TOKEN" \
+            -H "Authorization: token $GITHUB_TOKEN" \
             "https://api.github.com/repos/${{ github.repository }}/issues/$PR_NUMBER/comments" \
             -d "{\"body\": \"$message\"}")
           
