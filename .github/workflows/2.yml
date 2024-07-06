@@ -42,15 +42,17 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
-            const prCount = parseInt(core.getInput('pr_count'));
-            const author = core.getInput('author');
+            const prCount = parseInt(core.getInput('pr_count', { required: true }));
+            const author = core.getInput('author', { required: true });
             const mention = '@HardikGoyal2003';
             const prNumber = context.payload.pull_request.number;
             
             console.log(`PR Count: ${prCount}`);
             
             let message;
-            if (prCount === 1) {
+            if (isNaN(prCount)) {
+              message = `Error: PR Count could not be determined. Please check the workflow setup.`;
+            } else if (prCount === 1) {
               message = `@${author} 1 PR merged successfully! ${mention}`;
             } else if (prCount === 2) {
               message = `@${author} You have merged 2 PRs successfully! ${mention}`;
