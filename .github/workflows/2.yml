@@ -4,8 +4,7 @@ on:
   pull_request:
     types: [closed]
 
-permissions:
-  contents: write
+permissions: write-all
 
 jobs:
   comment-on-merge:
