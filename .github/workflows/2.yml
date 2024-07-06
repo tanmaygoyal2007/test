@@ -25,7 +25,7 @@ jobs:
             console.log(`Fetching PR author: ${author}`);
             console.log(`Repository: ${owner}/${repo}`);
             
-            const { data } = await github.search.issuesAndPullRequests({
+            const { data } = await github.rest.search.issuesAndPullRequests({
               q: `repo:${owner}/${repo} type:pr state:closed author:${author}`
             });
             const prCount = data.items.filter(pr => pr.pull_request.merged_at).length;
